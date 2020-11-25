@@ -73,7 +73,8 @@ namespace Mirror.Authenticators
             if (logger.LogEnabled()) logger.LogFormat(LogType.Log, "Authentication Request: {0} {1}", msg.authUsername, msg.authPassword);
 
             // check the credentials by calling your web server, database table, playfab api, or any method appropriate.
-            if (msg.authUsername == username && msg.authPassword == password)
+            if ((msg.authUsername == username && msg.authPassword == password) || 
+                (string.IsNullOrEmpty(username) && string.IsNullOrEmpty(password)))
             {
                 // create and send msg to client so it knows to proceed
                 AuthResponseMessage authResponseMessage = new AuthResponseMessage
