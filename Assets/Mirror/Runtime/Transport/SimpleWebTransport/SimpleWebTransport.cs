@@ -163,7 +163,11 @@ namespace Mirror.SimpleWeb
         public override void ClientDisconnect()
         {
             // don't set client null here of messages wont be processed
-            client?.Disconnect();
+            if (ClientConnected())  // disconnect is amusingly called twice by Mirror during StopClient
+            {
+                // dont set client null here of messages wont be processed
+                client?.Disconnect();
+            }
         }
 
         public override void ClientSend(int channelId, ArraySegment<byte> segment)
