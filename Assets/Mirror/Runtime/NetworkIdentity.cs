@@ -108,6 +108,14 @@ namespace Mirror
         [FormerlySerializedAs("m_SceneId"), HideInInspector]
         public ulong sceneId;
 
+        /// <summary>
+        /// A unique identifier for client-predictable objects that can be mapped and sent to clients so they can replace their predicted versions
+        /// </summary>
+        public ushort predictedId;
+
+        /// <summary>
+        /// Flag to make this object only exist when the game is running as a server (or host).
+        /// </summary>
         /// <summary>Make this object only exist when the game is running as a server (or host).</summary>
         [FormerlySerializedAs("m_ServerOnly")]
         [Tooltip("Prevents this object from being spawned / enabled on clients")]

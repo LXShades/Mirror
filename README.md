@@ -1,3 +1,14 @@
+# MOD NODES - LXShades
+This fork makes the following modifications to Mirror:
+
+* Adding post-spawn handlers for working with network-initialised data
+* "Suppress if already loading" for scene loads
+* Predictable object spawning potential (more practical usage in [UnityMultiplayerEssentials](https://github.com/lxshades/unitymultiplayeressentials))
+* Fixing WebTransport not connecting after disconnections ("already connected" bug)
+
+See these changes in 'lxshades' branches built on official Mirror versions, for example mirror_lxshades_61_0_0 is Mirror 61.0.0 with these mods.
+
+# Original Mirror README follows
 ![mMirror Logo](https://user-images.githubusercontent.com/16416509/119120944-6db26780-ba5f-11eb-9cdd-fc8500207f4d.png)
 
 [![Download](https://img.shields.io/badge/asset_store-brightgreen.svg)](https://assetstore.unity.com/packages/tools/network/mirror-129321)

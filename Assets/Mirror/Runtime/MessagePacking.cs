@@ -128,7 +128,8 @@ namespace Mirror
             catch (Exception e)
             {
                 Debug.LogError($"Disconnecting connId={conn.connectionId} to prevent exploits from an Exception in MessageHandler: {e.GetType().Name} {e.Message}\n{e.StackTrace}");
-                conn.Disconnect();
+                Debug.LogException(e);
+                //conn.Disconnect(); // what? don't kick the player if our code screwed something up!
             }
         };
 

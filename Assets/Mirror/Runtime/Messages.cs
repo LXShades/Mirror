@@ -54,6 +54,10 @@ namespace Mirror
         public ulong sceneId;
         // If sceneId != 0 then it is used instead of assetId
         public Guid assetId;
+        /// <summary>
+        /// A unique identifier for client-predictable objects that can be mapped and sent to clients so they can replace their predicted versions
+        /// </summary>
+        public ushort predictedId;
         // Local position
         public Vector3 position;
         // Local rotation

@@ -13,6 +13,8 @@ namespace Mirror
 
     public delegate GameObject SpawnHandlerDelegate(SpawnMessage msg);
 
+    public delegate void PostSpawnDelegate(GameObject go);
+
     // Handles requests to unspawn objects on the client
     public delegate void UnSpawnDelegate(GameObject spawned);
 
