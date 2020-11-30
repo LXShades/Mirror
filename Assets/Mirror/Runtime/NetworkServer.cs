@@ -1,7 +1,7 @@
+using Mirror.RemoteCalls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Mirror.RemoteCalls;
 using UnityEngine;
 
 namespace Mirror
@@ -21,7 +21,7 @@ namespace Mirror
         static readonly ILogger logger = LogFactory.GetLogger(typeof(NetworkServer));
 
         static bool initialized;
-        static int maxConnections;
+        public static int maxConnections;
 
         /// <summary>
         /// The connection to the host mode client (if any).
