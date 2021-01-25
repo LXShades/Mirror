@@ -1065,6 +1065,7 @@ namespace Mirror
                     isOwner = isOwner,
                     sceneId = identity.sceneId,
                     assetId = identity.assetId,
+                    predictedId = identity.predictedId,
                     // use local values for VR support
                     position = identity.transform.localPosition,
                     rotation = identity.transform.localRotation,

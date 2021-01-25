@@ -72,6 +72,7 @@ namespace Mirror
         // spawn handlers
         internal static readonly Dictionary<Guid, SpawnHandlerDelegate> spawnHandlers = new Dictionary<Guid, SpawnHandlerDelegate>();
         internal static readonly Dictionary<Guid, UnSpawnDelegate> unspawnHandlers = new Dictionary<Guid, UnSpawnDelegate>();
+        internal static readonly Dictionary<Guid, PostSpawnDelegate> postSpawnHandlers = new Dictionary<Guid, PostSpawnDelegate>();
 
         internal static void Shutdown()
         {
@@ -624,7 +625,7 @@ namespace Mirror
         /// <param name="assetId">Custom assetId string.</param>
         /// <param name="spawnHandler">A method to use as a custom spawnhandler on clients.</param>
         /// <param name="unspawnHandler">A method to use as a custom un-spawnhandler on clients.</param>
-        public static void RegisterSpawnHandler(Guid assetId, SpawnHandlerDelegate spawnHandler, UnSpawnDelegate unspawnHandler)
+        public static void RegisterSpawnHandler(Guid assetId, SpawnHandlerDelegate spawnHandler, UnSpawnDelegate unspawnHandler, PostSpawnDelegate postSpawnHandler = null)
         {
             if (spawnHandler == null)
             {
@@ -659,6 +660,11 @@ namespace Mirror
 
             spawnHandlers[assetId] = spawnHandler;
             unspawnHandlers[assetId] = unspawnHandler;
+
+            if (postSpawnHandler != null)
+            {
+                postSpawnHandlers[assetId] = postSpawnHandler;
+            }
         }
 
         /// <summary>
@@ -769,6 +775,11 @@ namespace Mirror
                 identity.NotifyAuthority();
                 identity.OnStartClient();
                 CheckForLocalPlayer(identity);
+
+                if (postSpawnHandlers.TryGetValue(identity.assetId, out PostSpawnDelegate postSpawner) && postSpawner != null)
+                {
+                    postSpawner(identity.gameObject);
+                }
             }
         }
 
@@ -906,6 +917,11 @@ namespace Mirror
                 identity.NotifyAuthority();
                 identity.OnStartClient();
                 CheckForLocalPlayer(identity);
+
+                if (postSpawnHandlers.TryGetValue(identity.assetId, out PostSpawnDelegate postSpawner) && postSpawner != null)
+                {
+                    postSpawner(identity.gameObject);
+                }
             }
             isSpawnFinished = true;
         }

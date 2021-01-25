@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using UnityEngine;
 
 namespace Mirror
@@ -14,6 +13,8 @@ namespace Mirror
 
     // Handles requests to unspawn objects on the client
     public delegate void UnSpawnDelegate(GameObject spawned);
+
+    public delegate void PostSpawnDelegate(GameObject target);
 
     // invoke type for Cmd/Rpc
     public enum MirrorInvokeType

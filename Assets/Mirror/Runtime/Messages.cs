@@ -98,6 +98,10 @@ namespace Mirror
         /// </summary>
         public Guid assetId;
         /// <summary>
+        /// A unique identifier for client-predictable objects that can be mapped and sent to clients so they can replace their predicted versions
+        /// </summary>
+        public ushort predictedId;
+        /// <summary>
         /// Local position
         /// </summary>
         public Vector3 position;
