@@ -114,7 +114,8 @@ namespace Mirror
             catch (Exception e)
             {
                 Debug.LogError($"Exception in MessageHandler: {e.GetType().Name} {e.Message}\n{e.StackTrace}");
-                conn.Disconnect();
+                logger.LogException(e);
+                //conn.Disconnect(); // what? don't kick the player if our code screwed something up!
             }
         };
     }
