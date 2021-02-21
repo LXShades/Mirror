@@ -230,10 +230,11 @@ namespace Mirror
         //      process_outgoing()
         //
         // => see NetworkLoop.cs for detailed explanations!
-#pragma warning disable UNT0001 // Empty Unity message
+        // LX: Then give me them race conditions. Incoming messages should be processed _before_ a frame for high-speed games, where ping is crucial.
+/*#pragma warning disable UNT0001 // Empty Unity message
         public void Update() {}
         public void LateUpdate() {}
-#pragma warning restore UNT0001 // Empty Unity message
+#pragma warning restore UNT0001 // Empty Unity message*/
 
         /// <summary>
         /// NetworkLoop NetworkEarly/LateUpdate were added for a proper network

@@ -1,3 +1,4 @@
+using kcp2k;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -310,7 +311,7 @@ namespace Mirror
             // scene change needed? then change scene and spawn afterwards.
             if (IsServerOnlineSceneChangeNeeded())
             {
-                ServerChangeScene(onlineScene);
+                ServerChangeScene(onlineScene, false);
             }
             // otherwise spawn directly
             else
@@ -442,7 +443,7 @@ namespace Mirror
             {
                 // call FinishStartHost after changing scene.
                 finishStartHostPending = true;
-                ServerChangeScene(onlineScene);
+                ServerChangeScene(onlineScene, false);
             }
             // otherwise call FinishStartHost directly
             else
@@ -575,7 +576,7 @@ namespace Mirror
 
             if (!string.IsNullOrEmpty(offlineScene))
             {
-                ServerChangeScene(offlineScene);
+                ServerChangeScene(offlineScene, false);
             }
 
             startPositionIndex = 0;
@@ -748,8 +749,14 @@ namespace Mirror
         // can be called from user code to switch scenes again while the game is
         // in progress. This automatically sets clients to be not-ready during
         // the change and ready again to participate in the new scene.
-        public virtual void ServerChangeScene(string newSceneName)
+        public virtual void ServerChangeScene(string newSceneName, bool suppressIfAlreadyLoading)
         {
+            if ((loadingSceneAsync != null && !loadingSceneAsync.isDone) && suppressIfAlreadyLoading)
+            {
+                logger.LogWarning("ServerChangeScene already loading a scene");
+                return;
+            }
+
             if (string.IsNullOrEmpty(newSceneName))
             {
                 Debug.LogError("ServerChangeScene empty scene name");
