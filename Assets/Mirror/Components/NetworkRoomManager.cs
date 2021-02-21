@@ -351,7 +351,7 @@ namespace Mirror
         /// <para>Clients that connect to this server will automatically switch to this scene. This is called autmatically if onlineScene or offlineScene are set, but it can be called from user code to switch scenes again while the game is in progress. This automatically sets clients to be not-ready. The clients must call NetworkClient.Ready() again to participate in the new scene.</para>
         /// </summary>
         /// <param name="newSceneName"></param>
-        public override void ServerChangeScene(string newSceneName)
+        public override void ServerChangeScene(string newSceneName, bool suppressIfAlreadyLoading)
         {
             if (newSceneName == RoomScene)
             {
@@ -374,7 +374,7 @@ namespace Mirror
                 allPlayersReady = false;
             }
 
-            base.ServerChangeScene(newSceneName);
+            base.ServerChangeScene(newSceneName, suppressIfAlreadyLoading);
         }
 
         /// <summary>
@@ -610,7 +610,7 @@ namespace Mirror
         public virtual void OnRoomServerPlayersReady()
         {
             // all players are readyToBegin, start the game
-            ServerChangeScene(GameplayScene);
+            ServerChangeScene(GameplayScene, false);
         }
 
         /// <summary>
@@ -684,7 +684,7 @@ namespace Mirror
             {
                 GUILayout.BeginArea(new Rect(Screen.width - 150f, 10f, 140f, 30f));
                 if (GUILayout.Button("Return to Room"))
-                    ServerChangeScene(RoomScene);
+                    ServerChangeScene(RoomScene, false);
                 GUILayout.EndArea();
             }
 

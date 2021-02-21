@@ -225,9 +225,10 @@ namespace Mirror
         //            e.g. in uSurvival Transport would apply Cmds before
         //            ShoulderRotation.LateUpdate, resulting in projectile
         //            spawns at the point before shoulder rotation.
-#pragma warning disable UNT0001 // Empty Unity message
+        // LX: Then give me them race conditions. Incoming messages should be processed _before_ a frame for high-speed games, where ping is crucial.
+/*#pragma warning disable UNT0001 // Empty Unity message
         public void Update() { }
-#pragma warning restore UNT0001 // Empty Unity message
+#pragma warning restore UNT0001 // Empty Unity message*/
 
         /// <summary>
         /// called when quitting the application by closing the window / pressing stop in the editor
