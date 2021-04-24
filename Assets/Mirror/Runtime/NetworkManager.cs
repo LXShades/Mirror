@@ -1,4 +1,3 @@
-using kcp2k;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -753,7 +752,7 @@ namespace Mirror
         {
             if ((loadingSceneAsync != null && !loadingSceneAsync.isDone) && suppressIfAlreadyLoading)
             {
-                logger.LogWarning("ServerChangeScene already loading a scene");
+                Debug.LogWarning("ServerChangeScene already loading a scene");
                 return;
             }
 
