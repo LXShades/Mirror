@@ -76,12 +76,14 @@ namespace Mirror
             new Dictionary<Guid, SpawnHandlerDelegate>();
         internal static readonly Dictionary<Guid, UnSpawnDelegate> unspawnHandlers =
             new Dictionary<Guid, UnSpawnDelegate>();
+        internal static readonly Dictionary<Guid, PostSpawnDelegate> postSpawnHandlers =
+            new Dictionary<Guid, PostSpawnDelegate>();
 
         // spawning
         static bool isSpawnFinished;
 
         // Disabled scene objects that can be spawned again, by sceneId.
-        internal static readonly Dictionary<ulong, NetworkIdentity> spawnableObjects =
+        public static readonly Dictionary<ulong, NetworkIdentity> spawnableObjects =
             new Dictionary<ulong, NetworkIdentity>();
 
         // initialization //////////////////////////////////////////////////////
@@ -697,7 +699,7 @@ namespace Mirror
         // prefab. This should be used when no prefab exists for the spawned
         // objects - such as when they are constructed dynamically at runtime
         // from configuration data.
-        public static void RegisterSpawnHandler(Guid assetId, SpawnDelegate spawnHandler, UnSpawnDelegate unspawnHandler)
+        public static void RegisterSpawnHandler(Guid assetId, SpawnDelegate spawnHandler, UnSpawnDelegate unspawnHandler, PostSpawnDelegate postSpawnHandler = null)
         {
             // We need this check here because we don't want a null handler in the lambda expression below
             if (spawnHandler == null)
@@ -706,7 +708,7 @@ namespace Mirror
                 return;
             }
 
-            RegisterSpawnHandler(assetId, msg => spawnHandler(msg.position, msg.assetId), unspawnHandler);
+            RegisterSpawnHandler(assetId, msg => spawnHandler(msg.position, msg.assetId), unspawnHandler, postSpawnHandler);
         }
 
         /// <summary>This is an advanced spawning function that registers a custom assetId with the spawning system.</summary>
@@ -715,7 +717,7 @@ namespace Mirror
         // prefab. This should be used when no prefab exists for the spawned
         // objects - such as when they are constructed dynamically at runtime
         // from configuration data.
-        public static void RegisterSpawnHandler(Guid assetId, SpawnHandlerDelegate spawnHandler, UnSpawnDelegate unspawnHandler)
+        public static void RegisterSpawnHandler(Guid assetId, SpawnHandlerDelegate spawnHandler, UnSpawnDelegate unspawnHandler, PostSpawnDelegate postSpawnHandler = null)
         {
             if (spawnHandler == null)
             {
@@ -750,6 +752,11 @@ namespace Mirror
 
             spawnHandlers[assetId] = spawnHandler;
             unspawnHandlers[assetId] = unspawnHandler;
+
+            if (postSpawnHandler != null)
+            {
+                postSpawnHandlers[assetId] = postSpawnHandler;
+            }
         }
 
         /// <summary> Removes a registered spawn handler function that was registered with NetworkClient.RegisterHandler().</summary>
@@ -907,6 +914,11 @@ namespace Mirror
                 identity.NotifyAuthority();
                 identity.OnStartClient();
                 CheckForLocalPlayer(identity);
+
+                if (postSpawnHandlers.TryGetValue(message.assetId, out PostSpawnDelegate postSpawnDelegate))
+                {
+                    postSpawnDelegate.Invoke(identity.gameObject);
+                }
             }
         }
 
