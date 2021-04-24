@@ -47,6 +47,8 @@ namespace Mirror
         static ConcurrentQueue<IncomingPacket> ServerIncomingQueue = new ConcurrentQueue<IncomingPacket>();    // queue going into mirror from clients.
         static ConcurrentQueue<OutgoingPacket> ServerOutgoingQueue = new ConcurrentQueue<OutgoingPacket>();    // queue going to clients from Mirror.
 
+        static List<IncomingPacket> IncomingPacketDelayBuffer = new List<IncomingPacket>();
+
         // --- Dictionaries --- //
         static ConcurrentDictionary<int, Peer> ConnectionIDToPeers = new ConcurrentDictionary<int, Peer>();
         static ConcurrentDictionary<Peer, int> PeersToConnectionIDs = new ConcurrentDictionary<Peer, int>();
@@ -102,7 +104,10 @@ namespace Mirror
         // API related to the Ping Calculations
         public static volatile uint CurrentClientPing; // Don't try setting this, it will be overwritten by the network thread.
 
+        private static volatile bool EnableLatencySimulationStatic;
         private static volatile int LatencySimulationJitterMsStatic;
+        private static /*volatile*/ long LatencySimulationDelayTicksStatic;
+        private static long LatencySimulationLatestReliableTick = 0;
 
         // Standard things
         public void Awake()
@@ -162,7 +167,9 @@ namespace Mirror
         {
             if (enabled)
             {
+                EnableLatencySimulationStatic = ((EnableLatencySimulation & Endpoint.Server) != 0 && ServerStarted) || ((EnableLatencySimulation & Endpoint.Client) != 0 && ClientStarted);
                 LatencySimulationJitterMsStatic = LatencySimulationJitterMs;
+                LatencySimulationDelayTicksStatic = LatencySimulationDelayMs * 10000;
 
                 // Server will pump itself...
                 if (ServerStarted) ProcessServerMessages();
@@ -173,20 +180,9 @@ namespace Mirror
         // Server processing loop.
         private bool ProcessServerMessages()
         {
-            long simulationDelayTicks = LatencySimulationDelayMs * 10000;
-
             // Get to the queue! Check those corners!
-            while (ServerIncomingQueue.TryPeek(out IncomingPacket pkt))
+            while (ServerIncomingQueue.TryDequeue(out IncomingPacket pkt))
             {
-                if ((EnableLatencySimulation & Endpoint.Server) != 0 && DateTime.Now.Ticks - pkt.arrivalTime < simulationDelayTicks)
-                {
-                    break; // don't receive it yet
-                }
-                else
-                {
-                    ServerIncomingQueue.TryDequeue(out pkt); // receive it
-                }
-
                 switch (pkt.type)
                 {
                     case QueuePacketType.Server_ClientConnect:
@@ -219,18 +215,8 @@ namespace Mirror
         #region Client Portion
         private bool ProcessClientMessages()
         {
-            long simulationDelayTicks = LatencySimulationDelayMs * 10000;
-            while (ClientIncomingQueue.TryPeek(out IncomingPacket pkt))
+            while (ClientIncomingQueue.TryDequeue(out IncomingPacket pkt))
             {
-                if ((EnableLatencySimulation & Endpoint.Client) != 0 && DateTime.Now.Ticks - pkt.arrivalTime < simulationDelayTicks)
-                {
-                    break; // don't receive it yet
-                }
-                else
-                {
-                    ClientIncomingQueue.TryDequeue(out pkt); // receive it
-                }
-
                 switch (pkt.type)
                 {
                     case QueuePacketType.Client_ConnectedToServer:
@@ -528,8 +514,7 @@ namespace Mirror
                                 // Client connected to server. Tell Mirror about that.
                                 IncomingPacket connPkt = default;
                                 connPkt.type = QueuePacketType.Client_ConnectedToServer;
-                                connPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
-                                ClientIncomingQueue.Enqueue(connPkt);
+                                EnqueueIncomingPacket(ClientIncomingQueue, ref connPkt, netEvent.ChannelID, random);
                                 break;
 
                             case EventType.Timeout:
@@ -537,8 +522,7 @@ namespace Mirror
                                 // Client disconnected from server. Tell Mirror about that.
                                 IncomingPacket disconnPkt = default;
                                 disconnPkt.type = QueuePacketType.Client_DisconnectedFromServer;
-                                disconnPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
-                                ClientIncomingQueue.Enqueue(disconnPkt);
+                                EnqueueIncomingPacket(ClientIncomingQueue, ref disconnPkt, netEvent.ChannelID, random);
                                 break;
 
                             case EventType.Receive:
@@ -563,7 +547,6 @@ namespace Mirror
                                         IncomingPacket dataPkt = default;
                                         dataPkt.type = QueuePacketType.Client_IncomingData;
                                         dataPkt.channelId = netEvent.ChannelID;
-                                        dataPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
 
                                         // Rent a new buffer from ArrayPool, copy it into that.
                                         // Disposal is later outside this try/catch.
@@ -572,7 +555,7 @@ namespace Mirror
                                         dataPkt.data = rentedBuffer;
                                         dataPkt.length = netEvent.Packet.Length;
 
-                                        ClientIncomingQueue.Enqueue(dataPkt);
+                                        EnqueueIncomingPacket(ClientIncomingQueue, ref dataPkt, netEvent.ChannelID, random);
                                     }
                                     catch (Exception e)
                                     {
@@ -588,6 +571,17 @@ namespace Mirror
                                 break;
                         }
                     }
+
+                    // Receive delayed incoming packets
+                    long tick = DateTime.Now.Ticks;
+                    for (int i = 0; i < IncomingPacketDelayBuffer.Count; i++)
+                    {
+                        if (tick >= IncomingPacketDelayBuffer[i].arrivalTime)
+                        {
+                            ClientIncomingQueue.Enqueue(IncomingPacketDelayBuffer[i]); // pass it to the game thread
+                        }
+                    }
+                    IncomingPacketDelayBuffer.RemoveAll(a => tick >= a.arrivalTime);
 
                     // Outgoing packet processor
                     while (ClientOutgoingQueue.TryDequeue(out OutgoingPacket opkt))
@@ -625,6 +619,24 @@ namespace Mirror
             Library.Deinitialize();
 
             Debug.Log("Ignorance: ENet Deinitialized.");
+        }
+
+        private static void EnqueueIncomingPacket(ConcurrentQueue<IncomingPacket> queue, ref IncomingPacket incomingPacket, byte channelId, System.Random random)
+        {
+            if (EnableLatencySimulationStatic)
+            {
+                incomingPacket.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000) + LatencySimulationDelayTicksStatic;
+                if (channelId == 0) // hack: check channel reliability instead of const 0... threading makes things awkward
+                {
+                    LatencySimulationLatestReliableTick = incomingPacket.arrivalTime = Math.Max(LatencySimulationLatestReliableTick, incomingPacket.arrivalTime);
+                }
+
+                IncomingPacketDelayBuffer.Add(incomingPacket);
+            }
+            else
+            {
+                queue.Enqueue(incomingPacket);
+            }
         }
 #endregion
 
@@ -732,6 +744,7 @@ namespace Mirror
 
                     // Incoming stuffs now.
                     bool hasBeenPolled = false;
+                    long tick = DateTime.Now.Ticks;
 
                     while (!hasBeenPolled)
                     {
@@ -765,10 +778,9 @@ namespace Mirror
                                 IncomingPacket newConnectionPkt = default;
                                 newConnectionPkt.mirrorClientId = nextConnectionId;
                                 newConnectionPkt.type = QueuePacketType.Server_ClientConnect;
-                                newConnectionPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
                                 newConnectionPkt.ipAddress = netEvent.Peer.IP;
 
-                                ServerIncomingQueue.Enqueue(newConnectionPkt);
+                                EnqueueIncomingPacket(ServerIncomingQueue, ref newConnectionPkt, netEvent.ChannelID, random);
                                 nextConnectionId++;
                                 break;
 
@@ -780,9 +792,8 @@ namespace Mirror
                                     disconnectionPkt.mirrorClientId = deadPeer;
                                     disconnectionPkt.type = QueuePacketType.Server_ClientDisconnect;
                                     disconnectionPkt.ipAddress = netEvent.Peer.IP;
-                                    disconnectionPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
 
-                                    ServerIncomingQueue.Enqueue(disconnectionPkt);
+                                    EnqueueIncomingPacket(ServerIncomingQueue, ref disconnectionPkt, netEvent.ChannelID, random);
                                     ConnectionIDToPeers.TryRemove(deadPeer, out _);
                                 }
 
@@ -817,7 +828,6 @@ namespace Mirror
 
                                         dataPkt.type = QueuePacketType.Server_IncomingData;
                                         dataPkt.ipAddress = netEvent.Peer.IP;
-                                        dataPkt.arrivalTime = DateTime.Now.Ticks + random.Next(0, LatencySimulationJitterMsStatic * 10000);
 
                                         byte[] rentedBuffer = System.Buffers.ArrayPool<byte>.Shared.Rent(netEvent.Packet.Length);
                                         netEvent.Packet.CopyTo(rentedBuffer);
@@ -825,7 +835,7 @@ namespace Mirror
                                         dataPkt.data = rentedBuffer;
                                         dataPkt.length = netEvent.Packet.Length;
 
-                                        ServerIncomingQueue.Enqueue(dataPkt);
+                                        EnqueueIncomingPacket(ServerIncomingQueue, ref dataPkt, netEvent.ChannelID, random);
 
                                     }
                                     catch (Exception e)
@@ -848,6 +858,16 @@ namespace Mirror
                                 break;
                         }
                     }
+
+                    // Receive delayed incoming packets
+                    for (int i = 0; i < IncomingPacketDelayBuffer.Count; i++)
+                    {
+                        if (tick >= IncomingPacketDelayBuffer[i].arrivalTime)
+                        {
+                            ServerIncomingQueue.Enqueue(IncomingPacketDelayBuffer[i]); // pass it to the game thread
+                        }
+                    }
+                    IncomingPacketDelayBuffer.RemoveAll(a => tick >= a.arrivalTime);
                 }
 
                 // Disconnect everyone, we're done here.
