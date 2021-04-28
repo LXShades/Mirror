@@ -9,12 +9,12 @@
 // Ignorance Threaded Version
 // -----------------
 // Very important these ones.
-using ENet;
 // Used for threading.
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
+using ENet;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 using Event = ENet.Event;
@@ -24,14 +24,6 @@ namespace Mirror
 {
     public class IgnoranceThreaded : Transport
     {
-        [Flags]
-        public enum PollTimingType
-        {
-            FixedUpdate,
-            Update,
-            LateUpdate
-        }
-
         [Flags]
         public enum Endpoint
         {
@@ -68,9 +60,6 @@ namespace Mirror
         public string ServerBindAddress = "127.0.0.1";
         public int CommunicationPort = 7777;
         public int MaximumPeerCCU = 100;
-
-        [Header("Polling Settings")]
-        public PollTimingType PollTiming = PollTimingType.LateUpdate;
 
         [Header("Thread Settings")]
         public int EnetServerPollTimeout = 1;
@@ -137,43 +126,29 @@ namespace Mirror
             return $"Ignorance Threaded v{IgnoranceInternals.Version}";
         }
 
-        public void FixedUpdate()
+        public override void ServerEarlyUpdate()
         {
-            if ((PollTiming & PollTimingType.FixedUpdate) != 0)
-            {
-                Poll();
-            }
+            base.ClientEarlyUpdate();
+
+            UpdateLatencySim();
+            if (ServerStarted) ProcessServerMessages();
         }
 
-        public void Update()
+        public override void ClientEarlyUpdate()
         {
-            if ((PollTiming & PollTimingType.Update) != 0)
-            {
-                Poll();
-            }
+            base.ServerLateUpdate();
+
+            UpdateLatencySim();
+            if (ClientStarted) ProcessClientMessages();
         }
 
-        // TODO: Don't use LateUpdate, because all network stuff will be 1 frame late.
-        // TODO: Use FixedUpdate and some trickery. But that's for another day.
-        public void LateUpdate()
-        {
-            if ((PollTiming & PollTimingType.LateUpdate) != 0)
-            {
-                Poll();
-            }
-        }
-
-        private void Poll()
+        private void UpdateLatencySim()
         {
             if (enabled)
             {
                 EnableLatencySimulationStatic = ((EnableLatencySimulation & Endpoint.Server) != 0 && ServerStarted) || ((EnableLatencySimulation & Endpoint.Client) != 0 && ClientStarted);
                 LatencySimulationJitterMsStatic = LatencySimulationJitterMs;
                 LatencySimulationDelayTicksStatic = LatencySimulationDelayMs * 10000;
-
-                // Server will pump itself...
-                if (ServerStarted) ProcessServerMessages();
-                if (ClientStarted) ProcessClientMessages();
             }
         }
 
