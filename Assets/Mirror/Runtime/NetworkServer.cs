@@ -1320,6 +1320,13 @@ namespace Mirror
             // process all incoming messages first before updating the world
             if (Transport.activeTransport != null)
                 Transport.activeTransport.ServerEarlyUpdate();
+
+            // release flow-controlled messages
+            foreach (KeyValuePair<int, NetworkConnectionToClient> conn in connections)
+            {
+                if (conn.Value != null && conn.Value.isFlowControlled)
+                    conn.Value.TryReleaseFlowControlledMessages();
+            }
         }
 
         // cache NetworkIdentity serializations

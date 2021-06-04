@@ -1214,6 +1214,10 @@ namespace Mirror
             // process all incoming messages first before updating the world
             if (Transport.activeTransport != null)
                 Transport.activeTransport.ClientEarlyUpdate();
+
+            // release applicable flow-controlled messages
+            if (connection != null && connection.isFlowControlled)
+                connection.TryReleaseFlowControlledMessages();
         }
 
         // NetworkLateUpdate called after any Update/FixedUpdate/LateUpdate

@@ -7,6 +7,18 @@ namespace Mirror
     /// <summary>Base NetworkConnection class for server-to-client and client-to-server connection.</summary>
     public abstract class NetworkConnection
     {
+        public struct FlowControlledMessage
+        {
+            public byte[] data;
+            public int channelId;
+
+            public FlowControlledMessage(byte[] data, int channelId)
+            {
+                this.data = data;
+                this.channelId = channelId;
+            }
+        }
+
         public const int LocalConnectionId = 0;
 
         // NetworkIdentities that this connection can see
@@ -49,6 +61,12 @@ namespace Mirror
         //            netId anymore: https://github.com/vis2k/Mirror/issues/1380
         //            Works fine with NetworkIdentity pointers though.
         public readonly HashSet<NetworkIdentity> clientOwnedObjects = new HashSet<NetworkIdentity>();
+
+        /// <summary>Whether this connection uses flow control</summary>
+        public bool isFlowControlled { get; set; }
+
+        /// <summary>Flow controller</summary>
+        public readonly FlowController<FlowControlledMessage> flowController = new FlowController<FlowControlledMessage>();
 
         internal NetworkConnection()
         {
@@ -145,29 +163,74 @@ namespace Mirror
             observing.Clear();
         }
 
-        // helper function
-        protected bool UnpackAndInvoke(NetworkReader reader, int channelId)
+        // converts a packed message time (cycling ushort) to a flow controller-compatible time (linear float)
+        private float PackedTicksToFlowControllerTime(ushort packedTicks)
         {
-            if (MessagePacking.Unpack(reader, out ushort msgType))
+            if (flowController.lastPoppedMessageSentTime >= 0f)
             {
-                // try to invoke the handler for that message
-                if (messageHandlers.TryGetValue(msgType, out NetworkMessageDelegate msgDelegate))
+                // imagine packedTicks being the decimal and SecondsPerMaxPackedTicks is the integer
+                // when the decimal wraps around to 0, we can assume the integer increased (as time always goes forwards)
+                float convertedTime = ((float)packedTicks / 1000f) + (int)(flowController.lastPoppedMessageSentTime / MessagePacking.SecondsPerMaxPackedTicks) * MessagePacking.SecondsPerMaxPackedTicks;
+
+                if (convertedTime < flowController.lastPoppedMessageSentTime)
                 {
-                    msgDelegate.Invoke(this, reader, channelId);
-                    lastMessageTime = Time.time;
-                    return true;
+                    // increase the "integer"
+                    convertedTime += MessagePacking.SecondsPerMaxPackedTicks;
                 }
-                else
+
+                return convertedTime;
+            }
+
+            return (float)packedTicks / MessagePacking.PackedTicksPerSecond;
+        }
+
+        // helper function
+        protected bool UnpackAndInvoke(NetworkReader reader, int channelId, bool shouldForceInvoke = false)
+        {
+            // even if flow control is disabled, we should still check for pending messages - it might have only just been disabled.
+            // to maintain packet order, we must continue to collect into the flow controller until they are all flushed in the next EarlyUpdate
+            if ((isFlowControlled || flowController.numBufferedPendingMessages > 0) && !shouldForceInvoke)
+            {
+                // collect the message pack into the buffer
+                // extract the packedTime first
+                int prevPosition = reader.Position;
+
+                if (!MessagePacking.Unpack(reader, out ushort _, out ushort msgTime))
                 {
-                    // Debug.Log("Unknown message ID " + msgType + " " + this + ". May be due to no existing RegisterHandler for this message.");
+                    Debug.LogError("Closed connection: " + this + ". Invalid message header.");
                     return false;
                 }
+
+                reader.Position = prevPosition;
+                flowController.PushMessage(new FlowControlledMessage(reader.ReadBytes(reader.Length), channelId), PackedTicksToFlowControllerTime(msgTime));
+
+                // we _got_ it, but we'll invoke it later
+                lastMessageTime = Time.time;
+                return true;
             }
             else
             {
-                Debug.LogError("Closed connection: " + this + ". Invalid message header.");
-                Disconnect();
-                return false;
+                if (MessagePacking.Unpack(reader, out ushort msgType, out ushort _))
+                {
+                    // try to invoke the handler for that message
+                    if (messageHandlers.TryGetValue(msgType, out NetworkMessageDelegate msgDelegate))
+                    {
+                        msgDelegate.Invoke(this, reader, channelId);
+                        lastMessageTime = Time.time;
+                        return true;
+                    }
+                    else
+                    {
+                        // Debug.Log("Unknown message ID " + msgType + " " + this + ". May be due to no existing RegisterHandler for this message.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Closed connection: " + this + ". Invalid message header.");
+                    Disconnect();
+                    return false;
+                }
             }
         }
 
@@ -190,6 +253,23 @@ namespace Mirror
                 {
                     if (!UnpackAndInvoke(reader, channelId))
                         break;
+                }
+            }
+        }
+
+        // releases flow controlled messages if applicable
+        internal void TryReleaseFlowControlledMessages()
+        {
+            // pop any remaining messages even if isFlowControlled is now false - we must empty the buffer before we can return to realtime
+            while (flowController.TryPopMessage(out FlowControlledMessage message, false))
+            {
+                using (PooledNetworkReader reader = NetworkReaderPool.GetReader(message.data))
+                {
+                    while (reader.Position < reader.Length)
+                    {
+                        if (!UnpackAndInvoke(reader, message.channelId, true))
+                            break;
+                    }
                 }
             }
         }

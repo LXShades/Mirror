@@ -1132,7 +1132,8 @@ namespace Mirror
 
             if (conn.identity != null)
             {
-                Debug.LogError("There is already a player for this connection.");
+                // can happen when changing scenes at the start (without using a network on/off scene)
+                Debug.LogWarning("There is already a player for this connection.");
                 return;
             }
 

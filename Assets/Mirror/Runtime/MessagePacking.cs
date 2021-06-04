@@ -17,7 +17,11 @@ namespace Mirror
     public static class MessagePacking
     {
         // message header size
-        internal const int HeaderSize = sizeof(ushort);
+        internal const int HeaderSize = sizeof(ushort) + sizeof(ushort);
+
+        internal const int MaxPackedTicks = 65536; // exclusive
+        internal const int PackedTicksPerSecond = 1000;
+        internal const float SecondsPerMaxPackedTicks = (float)MaxPackedTicks / PackedTicksPerSecond;
 
         public static ushort GetId<T>() where T : struct, NetworkMessage
         {
@@ -36,6 +40,10 @@ namespace Mirror
             ushort msgType = GetId<T>();
             writer.WriteUInt16(msgType);
 
+            // write the current time for network-smoothed messages - the recipient may collect and buffer based on this
+            // todo idea - pack into msgType
+            writer.WriteUInt16((ushort)(Time.unscaledTime * PackedTicksPerSecond));
+
             // serialize message into writer
             writer.Write(message);
         }
@@ -44,17 +52,19 @@ namespace Mirror
         // -> pass NetworkReader so it's less strange if we create it in here
         //    and pass it upwards.
         // -> NetworkReader will point at content afterwards!
-        public static bool Unpack(NetworkReader messageReader, out ushort msgType)
+        public static bool Unpack(NetworkReader messageReader, out ushort msgType, out ushort msgTime)
         {
             // read message type (varint)
             try
             {
                 msgType = messageReader.ReadUInt16();
+                msgTime = messageReader.ReadUInt16();
                 return true;
             }
             catch (System.IO.EndOfStreamException)
             {
                 msgType = 0;
+                msgTime = 0;
                 return false;
             }
         }
