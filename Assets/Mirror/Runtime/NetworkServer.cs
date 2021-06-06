@@ -1324,7 +1324,7 @@ namespace Mirror
             // release flow-controlled messages
             foreach (KeyValuePair<int, NetworkConnectionToClient> conn in connections)
             {
-                if (conn.Value != null && conn.Value.isFlowControlled)
+                if (conn.Value != null)
                     conn.Value.TryReleaseFlowControlledMessages();
             }
         }

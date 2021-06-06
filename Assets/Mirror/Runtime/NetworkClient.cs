@@ -1216,7 +1216,7 @@ namespace Mirror
                 Transport.activeTransport.ClientEarlyUpdate();
 
             // release applicable flow-controlled messages
-            if (connection != null && connection.isFlowControlled)
+            if (connection != null)
                 connection.TryReleaseFlowControlledMessages();
         }
 

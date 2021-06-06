@@ -62,7 +62,8 @@ namespace Mirror
         //            Works fine with NetworkIdentity pointers though.
         public readonly HashSet<NetworkIdentity> clientOwnedObjects = new HashSet<NetworkIdentity>();
 
-        /// <summary>Whether this connection uses flow control</summary>
+        /// <summary>Whether this connection uses flow control.
+        /// Note that there may still be network messages buffered even if this is false. Any of these should be flushed via TryReleaseFlowControlledMessages.</summary>
         public bool isFlowControlled { get; set; }
 
         /// <summary>Flow controller</summary>
@@ -198,6 +199,7 @@ namespace Mirror
                 if (!MessagePacking.Unpack(reader, out ushort _, out ushort msgTime))
                 {
                     Debug.LogError("Closed connection: " + this + ". Invalid message header.");
+                    Disconnect();
                     return false;
                 }
 

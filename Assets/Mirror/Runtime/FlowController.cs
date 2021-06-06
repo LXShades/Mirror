@@ -128,10 +128,7 @@ namespace Mirror
         public override string ToString()
         {
             return
-                $"NetFlowController<{typeof(TMessage).Name}>:\n" +
-                $"Pending messages: {numBufferedPendingMessages}\n" +
-                $"Current delay: {(int)(currentDelay * 1000)}ms\n" +
-                $"Times--Remote: {lastPoppedMessageSentTime.ToString("F1")}; Local: {localTime.ToString("F1")}; Diff: {localToRemoteTime.ToString("F1")}";
+                $"FlowController<{typeof(TMessage).Name}>:Msgs/Delay/Remot/Lcl/Diff {numBufferedPendingMessages}/{(int)(currentDelay * 1000)}ms/{lastPoppedMessageSentTime.ToString("F1")}/{localTime.ToString("F1")}/{localToRemoteTime.ToString("F1")}";
         }
     }
 
@@ -141,7 +138,7 @@ namespace Mirror
         public static FlowControlSettings Default = new FlowControlSettings()
         {
             jitterSampleSize = 3f,
-            upperPercentile = 1f,
+            upperPercentile = 5f,
             maxDelay = 0.1f,
             minDelay = 0f,
             maxMessageAge = -1f,
