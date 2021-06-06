@@ -57,13 +57,10 @@ namespace Mirror
 
         public int ClosestIndexAfter(float time, float tolerance = 0.01f)
         {
-            if (items.Count > 0)
+            for (int index = items.Count - 1; index >= 0; index--)
             {
-                for (int index = items.Count - 1; index >= 0; index--)
-                {
-                    if (items[index].time > time - tolerance)
-                        return index;
-                }
+                if (items[index].time > time - tolerance)
+                    return index;
             }
 
             return -1;
@@ -71,13 +68,16 @@ namespace Mirror
 
         public int ClosestIndexBefore(float time, float tolerance = 0.01f)
         {
-            for (int index = 0; index < items.Count; index++)
+            // return the lowest-time index within the tolerance range (we still want to prioritise the ones actually _before_ the time, particularly in cases where we receive multiple things in the same time)
+            // don't just pick up the first < time+tolernace result we find because there might be earlier ones still
+            int index = -1;
+            for (int idx = 0; idx < items.Count; idx++)
             {
-                if (items[index].time < time + tolerance)
-                    return index;
+                if (items[idx].time < time + tolerance)
+                    index = idx;
             }
 
-            return -1;
+            return index;
         }
 
         public int ClosestIndexBeforeOrEarliest(float time, float tolerance = 0.01f)
