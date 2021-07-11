@@ -87,6 +87,7 @@ namespace Mirror
             // let's catch them all and then disconnect that connection to avoid
             // further attacks.
             T message = default;
+            int startPos = reader.Position;
             try
             {
                 if (requireAuthentication && !conn.isAuthenticated)
@@ -111,8 +112,9 @@ namespace Mirror
             }
             finally
             {
+                int endPos = reader.Position;
                 // TODO: Figure out the correct channel
-                NetworkDiagnostics.OnReceive(message, channelId, reader.Length);
+                NetworkDiagnostics.OnReceive(message, channelId, endPos - startPos);
             }
 
             // user handler exception should not stop the whole server
