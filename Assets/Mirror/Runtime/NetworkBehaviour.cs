@@ -249,7 +249,7 @@ namespace Mirror
         }
 
         // pass full function name to avoid ClassA.Func <-> ClassB.Func collisions
-        protected void SendRPCInternal(string functionFullName, NetworkWriter writer, int channelId, bool includeOwner)
+        protected void SendRPCInternal(string functionFullName, NetworkWriter writer, int channelId, bool includeOwner, bool includeServer)
         {
             // this was in Weaver before
             if (!NetworkServer.active)
@@ -277,6 +277,13 @@ namespace Mirror
             };
 
             NetworkServer.SendToReadyObservers(netIdentity, message, includeOwner, channelId);
+
+            // [LXShadow] Sometimes we want servers to do the thing as well!
+            if (includeServer && isServerOnly)
+            {
+                using (PooledNetworkReader networkReader = NetworkReaderPool.GetReader(message.payload))
+                    netIdentity.HandleRemoteCall(message.componentIndex, message.functionHash, RemoteCalls.RemoteCallType.ClientRpc, networkReader);
+            }
         }
 
         // pass full function name to avoid ClassA.Func <-> ClassB.Func collisions

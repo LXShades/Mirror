@@ -32,6 +32,7 @@ namespace Mirror
     {
         public int channel = Channels.Reliable;
         public bool includeOwner = true;
+        public bool includeServer = false; // [LXShadow] we want some ClientRPCs to execute on the server as well
     }
 
     /// <summary>

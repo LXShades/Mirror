@@ -1130,6 +1130,7 @@ namespace Mirror.Weaver
             }
 
             bool includeOwner = clientRpcAttr.GetField("includeOwner", true);
+            bool includeServer = clientRpcAttr.GetField("includeServer", true);
 
             names.Add(md.Name);
             clientRpcs.Add(new ClientRpcResult
@@ -1142,7 +1143,7 @@ namespace Mirror.Weaver
             // need null check here because ProcessRpcCall returns null if it can't write all the args
             if (rpcCallFunc == null) { return; }
 
-            MethodDefinition rpcFunc = RpcProcessor.ProcessRpcInvoke(weaverTypes, writers, readers, Log, netBehaviourSubclass, md, rpcCallFunc, ref WeavingFailed);
+            MethodDefinition rpcFunc = RpcProcessor.ProcessRpcInvoke(weaverTypes, writers, readers, Log, netBehaviourSubclass, md, rpcCallFunc, includeServer, ref WeavingFailed);
             if (rpcFunc != null)
             {
                 clientRpcInvocationFuncs.Add(rpcFunc);

@@ -6,7 +6,7 @@ namespace Mirror.Weaver
     // Processes [Rpc] methods in NetworkBehaviour
     public static class RpcProcessor
     {
-        public static MethodDefinition ProcessRpcInvoke(WeaverTypes weaverTypes, Writers writers, Readers readers, Logger Log, TypeDefinition td, MethodDefinition md, MethodDefinition rpcCallFunc, ref bool WeavingFailed)
+        public static MethodDefinition ProcessRpcInvoke(WeaverTypes weaverTypes, Writers writers, Readers readers, Logger Log, TypeDefinition td, MethodDefinition md, MethodDefinition rpcCallFunc, bool includeServer, ref bool WeavingFailed)
         {
             string rpcName = Weaver.GenerateMethodName(Weaver.InvokeRpcPrefix, md);
 
@@ -16,7 +16,8 @@ namespace Mirror.Weaver
             ILProcessor worker = rpc.Body.GetILProcessor();
             Instruction label = worker.Create(OpCodes.Nop);
 
-            NetworkBehaviourProcessor.WriteClientActiveCheck(worker, weaverTypes, md.Name, label, "RPC");
+            if (!includeServer)
+                NetworkBehaviourProcessor.WriteClientActiveCheck(worker, weaverTypes, md.Name, label, "RPC");
 
             // setup for reader
             worker.Emit(OpCodes.Ldarg_0);
@@ -76,6 +77,7 @@ namespace Mirror.Weaver
 
             int channel = clientRpcAttr.GetField("channel", 0);
             bool includeOwner = clientRpcAttr.GetField("includeOwner", true);
+            bool includeServer = clientRpcAttr.GetField("includeServer", true);
 
             // invoke SendInternal and return
             // this
@@ -87,6 +89,8 @@ namespace Mirror.Weaver
             worker.Emit(OpCodes.Ldc_I4, channel);
             // includeOwner ? 1 : 0
             worker.Emit(includeOwner ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            // [LXShadow] includeServer ? 1 : 0
+            worker.Emit(includeServer ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
             worker.Emit(OpCodes.Callvirt, weaverTypes.sendRpcInternal);
 
             NetworkBehaviourProcessor.WriteRecycleWriter(worker, weaverTypes);
