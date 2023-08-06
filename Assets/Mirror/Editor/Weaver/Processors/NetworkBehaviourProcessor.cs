@@ -117,6 +117,8 @@ namespace Mirror.Weaver
         public static void WriteClientActiveCheck(ILProcessor worker, WeaverTypes weaverTypes, string mdName, Instruction label, string errString)
         {
             // client active check
+            worker.Emit(OpCodes.Call, weaverTypes.GetServerCanLocallyRunRpcs); // [LXShadow] skip this check if we're allowing local RPCs
+            worker.Emit(OpCodes.Brtrue, label);
             worker.Emit(OpCodes.Call, weaverTypes.NetworkClientGetActive);
             worker.Emit(OpCodes.Brtrue, label);
 

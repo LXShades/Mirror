@@ -20,6 +20,7 @@ namespace Mirror.Weaver
 
         public MethodReference NetworkServerGetActive;
         public MethodReference NetworkClientGetActive;
+        public MethodReference GetServerCanLocallyRunRpcs;
 
         // custom attribute types
         public MethodReference InitSyncObjectReference;
@@ -76,6 +77,8 @@ namespace Mirror.Weaver
             NetworkServerGetActive = Resolvers.ResolveMethod(NetworkServerType, assembly, Log, "get_active", ref WeavingFailed);
             TypeReference NetworkClientType = Import(typeof(NetworkClient));
             NetworkClientGetActive = Resolvers.ResolveMethod(NetworkClientType, assembly, Log, "get_active", ref WeavingFailed);
+            TypeReference UnityMultiplayerEssentialsExtensionsType = Import(typeof(UnityMultiplayerEssentialsExtensions));
+            GetServerCanLocallyRunRpcs = Resolvers.ResolveMethod(UnityMultiplayerEssentialsExtensionsType, assembly, Log, $"get_{nameof(UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)}", ref WeavingFailed);
 
             TypeReference RemoteCallDelegateType = Import<RemoteCalls.RemoteCallDelegate>();
             RemoteCallDelegateConstructor = Resolvers.ResolveMethod(RemoteCallDelegateType, assembly, Log, ".ctor", ref WeavingFailed);

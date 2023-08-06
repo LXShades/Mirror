@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using Mirror.RemoteCalls;
 using UnityEngine;
 
 namespace Mirror
@@ -193,10 +194,23 @@ namespace Mirror
             // this was in Weaver before
             // NOTE: we could remove this later to allow calling Cmds on Server
             //       to avoid Wrapper functions. a lot of people requested this.
+            // [LXShades] Actually what if we did that right now
             if (!NetworkClient.active)
             {
-                Debug.LogError($"Command Function {functionFullName} called without an active client.");
-                return;
+                if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
+                {
+                    // loopback to self
+                    using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
+                    {
+                        RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.Command, reader, this, null);
+                    }
+                    return;
+                }
+                else
+                {
+                    Debug.LogError($"Command Function {functionFullName} called without an active client.");
+                    return;
+                }
             }
 
             // previously we used NetworkClient.readyConnection.
@@ -310,8 +324,20 @@ namespace Mirror
             // if still null
             if (conn is null)
             {
-                Debug.LogError($"TargetRPC {functionFullName} was given a null connection, make sure the object has an owner or you pass in the target connection");
-                return;
+                if (UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
+                {
+                    // loopback to self
+                    using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
+                    {
+                        RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.ClientRpc, reader, this, null);
+                    }
+                    return;
+                }
+                else
+                {
+                    Debug.LogError($"TargetRPC {functionFullName} was given a null connection, make sure the object has an owner or you pass in the target connection");
+                    return;
+                }
             }
 
             if (!(conn is NetworkConnectionToClient))

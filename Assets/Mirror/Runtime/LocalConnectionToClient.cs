@@ -8,6 +8,15 @@ namespace Mirror
     {
         internal LocalConnectionToServer connectionToServer;
 
+        public static LocalConnectionToClient CreateFakeClient()
+        {
+            LocalConnectionToServer connectionToServer = new LocalConnectionToServer();
+            LocalConnectionToClient connectionToClient = new LocalConnectionToClient();
+            connectionToServer.connectionToClient = connectionToClient;
+            connectionToClient.connectionToServer = connectionToServer;
+            return connectionToClient;
+        }
+
         public LocalConnectionToClient() : base(LocalConnectionId) {}
 
         public override string address => "localhost";

@@ -141,6 +141,11 @@ namespace Mirror
         }
         NetworkConnectionToClient _connectionToClient;
 
+        /// <summary>
+        /// If true, the object has hasAuthority set on the server ("owned" by the server even if the server has no player)
+        /// </summary>
+        public bool hasServerAuthority { get; internal set; }
+
         /// <summary>All spawned NetworkIdentities by netId. Available on server and client.</summary>
         // server sees ALL spawned ones.
         // client sees OBSERVED spawned ones.
@@ -1180,6 +1185,12 @@ namespace Mirror
                 return false;
             }
 
+            if (hasServerAuthority)
+            {
+                Debug.LogError($"AssignClientAuthority for {gameObject} is owned by the server. Use RemoveServerAuthority() first.");
+                return false;
+            }
+
             SetClientOwner(conn);
 
             // The client will match to the existing object
@@ -1215,6 +1226,59 @@ namespace Mirror
                 connectionToClient = null;
                 NetworkServer.SendChangeOwnerMessage(this, previousOwner);
             }
+        }
+
+        /// <summary>
+        /// Specifies an object as server-owned
+        /// </summary>
+        public bool AssignServerAuthority()
+        {
+            if (!isServer)
+            {
+                Debug.LogError("AssignServerAuthority can only be called on the server for spawned objects.");
+                return false;
+            }
+
+            if (connectionToClient != null)
+            {
+                Debug.LogError($"AssignServerAuthority for {gameObject} already has an owner. Use RemoveClientAuthority() first.");
+                return false;
+            }
+
+            if (hasServerAuthority)
+            {
+                Debug.LogError($"AssignServerAuthority for {gameObject} is already owned by the server.");
+                return false;
+            }
+
+            SetClientOwner(null);
+
+            hasAuthority = true;
+            hasServerAuthority = true;
+
+            NotifyAuthority();
+
+            return true;
+        }
+
+        public void RemoveServerAuthority()
+        {
+            if (!isServer)
+            {
+                Debug.LogError($"RemoveServerAuthority {gameObject} can only be called on the server for spawned objects.");
+                return;
+            }
+
+            if (!hasServerAuthority)
+            {
+                Debug.LogError($"RemoveServerAuthority {gameObject} did not have server authority.");
+                return;
+            }
+
+            hasAuthority = false;
+            hasServerAuthority = false;
+
+            NotifyAuthority();
         }
 
         // Reset is called when the user hits the Reset button in the
