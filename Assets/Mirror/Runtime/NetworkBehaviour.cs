@@ -195,22 +195,19 @@ namespace Mirror
             // NOTE: we could remove this later to allow calling Cmds on Server
             //       to avoid Wrapper functions. a lot of people requested this.
             // [LXShades] Actually what if we did that right now
-            if (!NetworkClient.active)
+            if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
             {
-                if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
+                // loopback to self
+                using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
                 {
-                    // loopback to self
-                    using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
-                    {
-                        RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.Command, reader, this, null);
-                    }
-                    return;
+                    RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.Command, reader, this, null);
                 }
-                else
-                {
-                    Debug.LogError($"Command Function {functionFullName} called without an active client.");
-                    return;
-                }
+                return;
+            }
+            else if (!NetworkClient.active)
+            {
+                Debug.LogError($"Command Function {functionFullName} called without an active client.");
+                return;
             }
 
             // previously we used NetworkClient.readyConnection.
