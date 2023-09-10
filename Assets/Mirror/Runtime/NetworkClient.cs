@@ -61,6 +61,9 @@ namespace Mirror
         /// <summary>Check if client is connected (after connecting).</summary>
         public static bool isConnected => connectState == ConnectState.Connected;
 
+        /// <summary>Check if client is connected and authenticated</summary>
+        public static bool isConnectedAndAuthenticated => connectState == ConnectState.Connected && connection.isAuthenticated;
+
         /// <summary>True if client is running in host mode.</summary>
         public static bool isHostClient => connection is LocalConnectionToServer;
 
