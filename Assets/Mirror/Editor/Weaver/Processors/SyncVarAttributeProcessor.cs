@@ -226,6 +226,10 @@ namespace Mirror.Weaver
             // pass 'null' as hook
             else worker.Emit(OpCodes.Ldnull);
 
+            // specify whether hook should be called on servers without clients
+            CustomAttribute syncVarAttribute = fd.GetCustomAttribute<SyncVarAttribute>();
+            worker.Emit(OpCodes.Ldc_I4, (int)(syncVarAttribute.GetField<bool>(nameof(SyncVarAttribute.callHookOnServer), false) ? 1 : 0));
+
             // call GeneratedSyncVarSetter<T>.
             // special cases for GameObject/NetworkIdentity/NetworkBehaviour
             // passing netId too for persistence.

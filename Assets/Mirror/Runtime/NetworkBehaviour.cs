@@ -384,7 +384,7 @@ namespace Mirror
         //       }
         //   }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GeneratedSyncVarSetter<T>(T value, ref T field, ulong dirtyBit, Action<T, T> OnChanged)
+        public void GeneratedSyncVarSetter<T>(T value, ref T field, ulong dirtyBit, Action<T, T> OnChanged, bool canServerCallHook)
         {
             if (!SyncVarEqual(value, ref field))
             {
@@ -396,7 +396,7 @@ namespace Mirror
                 {
                     // we use hook guard to protect against deadlock where hook
                     // changes syncvar, calling hook again.
-                    if (NetworkServer.localClientActive && !GetSyncVarHookGuard(dirtyBit))
+                    if ((NetworkServer.localClientActive || canServerCallHook) && !GetSyncVarHookGuard(dirtyBit))
                     {
                         SetSyncVarHookGuard(dirtyBit, true);
                         OnChanged(oldValue, value);
@@ -409,7 +409,7 @@ namespace Mirror
         // GameObject needs custom handling for persistence via netId.
         // has one extra parameter.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GeneratedSyncVarSetter_GameObject(GameObject value, ref GameObject field, ulong dirtyBit, Action<GameObject, GameObject> OnChanged, ref uint netIdField)
+        public void GeneratedSyncVarSetter_GameObject(GameObject value, ref GameObject field, ulong dirtyBit, Action<GameObject, GameObject> OnChanged, bool canServerCallHook, ref uint netIdField)
         {
             if (!SyncVarGameObjectEqual(value, netIdField))
             {
@@ -421,7 +421,7 @@ namespace Mirror
                 {
                     // we use hook guard to protect against deadlock where hook
                     // changes syncvar, calling hook again.
-                    if (NetworkServer.localClientActive && !GetSyncVarHookGuard(dirtyBit))
+                    if ((NetworkServer.localClientActive || canServerCallHook) && !GetSyncVarHookGuard(dirtyBit))
                     {
                         SetSyncVarHookGuard(dirtyBit, true);
                         OnChanged(oldValue, value);
@@ -434,7 +434,7 @@ namespace Mirror
         // NetworkIdentity needs custom handling for persistence via netId.
         // has one extra parameter.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GeneratedSyncVarSetter_NetworkIdentity(NetworkIdentity value, ref NetworkIdentity field, ulong dirtyBit, Action<NetworkIdentity, NetworkIdentity> OnChanged, ref uint netIdField)
+        public void GeneratedSyncVarSetter_NetworkIdentity(NetworkIdentity value, ref NetworkIdentity field, ulong dirtyBit, Action<NetworkIdentity, NetworkIdentity> OnChanged, bool canServerCallHook, ref uint netIdField)
         {
             if (!SyncVarNetworkIdentityEqual(value, netIdField))
             {
@@ -446,7 +446,7 @@ namespace Mirror
                 {
                     // we use hook guard to protect against deadlock where hook
                     // changes syncvar, calling hook again.
-                    if (NetworkServer.localClientActive && !GetSyncVarHookGuard(dirtyBit))
+                    if ((NetworkServer.localClientActive || canServerCallHook) && !GetSyncVarHookGuard(dirtyBit))
                     {
                         SetSyncVarHookGuard(dirtyBit, true);
                         OnChanged(oldValue, value);
@@ -459,7 +459,7 @@ namespace Mirror
         // NetworkBehaviour needs custom handling for persistence via netId.
         // has one extra parameter.
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void GeneratedSyncVarSetter_NetworkBehaviour<T>(T value, ref T field, ulong dirtyBit, Action<T, T> OnChanged, ref NetworkBehaviourSyncVar netIdField)
+        public void GeneratedSyncVarSetter_NetworkBehaviour<T>(T value, ref T field, ulong dirtyBit, Action<T, T> OnChanged, bool canServerCallHook, ref NetworkBehaviourSyncVar netIdField)
             where T : NetworkBehaviour
         {
             if (!SyncVarNetworkBehaviourEqual(value, netIdField))
@@ -472,7 +472,7 @@ namespace Mirror
                 {
                     // we use hook guard to protect against deadlock where hook
                     // changes syncvar, calling hook again.
-                    if (NetworkServer.localClientActive && !GetSyncVarHookGuard(dirtyBit))
+                    if ((NetworkServer.localClientActive || canServerCallHook) && !GetSyncVarHookGuard(dirtyBit))
                     {
                         SetSyncVarHookGuard(dirtyBit, true);
                         OnChanged(oldValue, value);
