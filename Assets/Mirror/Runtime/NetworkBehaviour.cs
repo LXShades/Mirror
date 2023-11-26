@@ -195,7 +195,7 @@ namespace Mirror
             // NOTE: we could remove this later to allow calling Cmds on Server
             //       to avoid Wrapper functions. a lot of people requested this.
             // [LXShades] Actually what if we did that right now
-            if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
+            if (NetworkServer.active && !NetworkClient.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
             {
                 // loopback to self
                 using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
