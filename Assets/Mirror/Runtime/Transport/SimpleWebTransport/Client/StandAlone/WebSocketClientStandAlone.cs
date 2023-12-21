@@ -42,16 +42,33 @@ namespace Mirror.SimpleWeb
                 conn = new Connection(client, AfterConnectionDisposed);
                 conn.receiveThread = Thread.CurrentThread;
 
-                try
+                long startMillisecond = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                while (true)
                 {
-                    client.Connect(serverAddress.Host, serverAddress.Port);
-                }
-                catch (SocketException)
-                {
-                    client.Dispose();
-                    throw;
-                }
+                    long attemptStartMillisecond = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                    try
+                    {
+                        client.Connect(serverAddress.Host, serverAddress.Port);
+                        break;
+                    }
+                    catch (SocketException)
+                    {
+                        long endMillisecond = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
+                        if (endMillisecond - startMillisecond > tcpConfig.connectionRetryDurationMs)
+                        {
+                            // give up
+                            client.Dispose();
+                            throw;
+                        }
+
+                        if (endMillisecond - attemptStartMillisecond < tcpConfig.minTimePerConnectionRetryMs)
+                        {
+                            // try again after a delay
+                            Thread.Sleep((int)(tcpConfig.minTimePerConnectionRetryMs - (endMillisecond - attemptStartMillisecond)));
+                        }
+                    }
+                }
 
                 bool success = sslHelper.TryCreateStream(conn, serverAddress);
                 if (!success)
