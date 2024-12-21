@@ -194,18 +194,19 @@ namespace Mirror
             // this was in Weaver before
             // NOTE: we could remove this later to allow calling Cmds on Server
             //       to avoid Wrapper functions. a lot of people requested this.
-            // [LXShades] Actually what if we did that right now
-            if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
+            // [LXShades] Actually what if we did that right now. Check client first, as we might be a host.
+            if (!NetworkClient.active)
             {
-                // loopback to self
-                using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
+                if (NetworkServer.active && UnityMultiplayerEssentialsExtensions.ServerCanLocallyRunRpcs)
                 {
-                    RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.Command, reader, this, null);
+                    // loopback to self
+                    using (PooledNetworkReader reader = NetworkReaderPool.GetReader(writer.ToArraySegment()))
+                    {
+                        RemoteProcedureCalls.Invoke(functionFullName.GetStableHashCode(), RemoteCallType.Command, reader, this, null);
+                    }
+                    return;
                 }
-                return;
-            }
-            else if (!NetworkClient.active)
-            {
+
                 Debug.LogError($"Command Function {functionFullName} called without an active client.");
                 return;
             }
